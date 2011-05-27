@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site site="http://.*.voddler.com"
+    plugin="http://player.voddler.com/VoddlerPlayer.swf"
+    initialState="wait-for-frame-load"
+    identifier="com.plexapp.plugins.voddler"
+    version="1.0">
+    
+	<seekbar type="simple"> 
+		<start x="65" y="345" />
+		<end   x="550" y="345" />
+		<played>
+			<color rgb="2392bf" />
+		</played>
+	</seekbar>
+
+    <!-- Crop the control to better fill the application -->
+  <!--  <crop x="0" y="26" width="654" height="334" /> -->
+
+    <!-- The condition we use several times from within states to check if we're logged in or not -->
+    <condition name="need-to-login">
+        <and>
+            <!-- Check if a specific element exists in the page, for example the loginform -->
+            <!-- Returns true if we need to login -->
+            <!-- <javascript script="document.cookie.indexOf('; skySSO=')" matches="-1" /> -->
+            <javascript script="document.getElementsByClassName('loggedout').length" matches="1" />
+        </and>
+    </condition>
+
+    <!-- Wait for frame to load -->
+    <state name="wait-for-frame-load">
+        <event>
+            <condition>
+                <!-- Wait for the DOM to load... -->
+                <frameLoaded />
+            </condition>
+            <action>
+                <!-- ...then goto the 'check-for-auth' state -->
+                <goto state="check-for-auth" />
+            </action>
+        </event>
+    </state>
+
+    <!-- Check for auth -->
+    <state name="check-for-auth">
+        <event>
+            <condition>
+                <!-- If we don't need to login, goto state 'playing' -->
+                <not>
+                    <condition name="need-to-login" />
+                </not>
+            </condition>
+            <action>
+                <goto state="finish-loading-before-play" />
+            </action>
+        </event>
+        <event>
+            <!-- If we *do* need to login, visit the login url and attempt to submit it -->
+            <condition>
+                <condition name="need-to-login" />
+            </condition>
+            <action>
+                <!-- The state machine will wait until the URL has fully loaded before moving -->
+                <!-- onto the next state. -->
+                <visit url="http://www.voddler.com/en/login"/>
+                <goto state="wait-for-login-to-load"/>
+            </action>
+        </event>
+    </state>
+    
+    <state name="wait-for-login-to-load">
+        <event>
+            <condition>
+                <!-- Wait for the DOM to load... -->
+                <frameLoaded />
+            </condition>
+            <action>
+            	<run script="$('input[name=email]').val('${username}');$('input[name=password]').val('${password}');$('input[class=button_submit]').click();" />
+                <pause time="3000" />
+                <goto state="check-for-auth-again" />
+            </action>
+        </event>
+    </state>
+    
+    <state name="wait-for-login-to-process">
+        <event>
+            <condition>
+                <!-- Wait for the DOM to load... -->
+                <frameLoaded />
+            </condition>
+            <action>
+            	<!-- <run script="$('input[name=email]').val('thomas@rosenquist.org');$('input[name=password]').val('84rostho');$('input[class=button_submit]').click();" />
+                <pause time="5000" /> -->
+                <goto state="check-for-auth-again" />
+            </action>
+        </event>
+    </state>
+
+    <!-- Check for auth again -->
+    <state name="check-for-auth-again">
+        <event>
+            <condition>
+                <!-- If login was successful we should now not need to login and can go to the state 'cleanup' -->
+                <not>
+                    <condition name="need-to-login" />
+                </not>
+            </condition>
+            <action>
+                <visit url="${url}" />
+                <!-- <pause time="2000" /> -->
+                <!--<run script="$('#playmoviebutton').click()" /> -->
+                <goto state="finish-loading-before-play" />
+            </action>
+        </event>
+        <event>
+            <condition>
+                <!-- If we still need to login after we've tried to login, something is wrong... -->
+                <condition name="need-to-login" />
+            </condition>
+            <action>
+                <goto state="end" param="Please check your username and password in the plugin's settings" />
+            </action>
+        </event>
+    </state>
+    
+    <condition name="need-to-click-resume-choice">
+        <and>
+        	<color x="20" y="20" rgb="000000" />
+            <color x="10" y="10" rgb="000000" />
+        </and>
+    </condition>
+    
+    <condition name="need-to-click-start-movie">
+        <and>
+        	<color x="327" y="167" rgb="ebebeb" />
+            <color x="327" y="117" rgb="009bd6" />
+        </and>
+    </condition>
+    
+    <condition name="need-to-click-play-button">
+        <and>
+            <javascript script="$('#playmoviebutton')[0].id" matches="playmoviebutton" />
+        </and>
+    </condition>
+    
+    <!-- Wait for frame to load -->
+    <state name="finish-loading-before-play">
+        <event>
+            <condition>
+                <!-- Wait for the DOM to load... -->
+                <frameLoaded />
+            </condition>
+            <action>
+                <!-- ...then goto the 'check-for-auth' state -->
+                <goto state="playing" />
+            </action>
+        </event>
+    </state>
+
+    <!-- Playing -->
+    <state name="playing">
+    	<event>
+    		<condition>
+    			<command name="pause" />
+    		</condition>
+    		<action>
+    			<click x="290" y="200" />
+    		</action>
+    	</event>
+	   	<event>
+            <condition>
+                <!-- When the movie is buffered we need to click on it to start it -->
+                <condition name="need-to-click-start-movie" />
+            </condition>
+            <action>
+            	<click x="325" y="190" />
+            	<pause time="1000" />
+            </action>
+        </event>
+	    
+    	<event>
+            <condition>
+                <!-- When we reach the movie we need to click the play button -->
+                <condition name="need-to-click-play-button" />
+            </condition>
+            <action>
+                <run script="$('#playmoviebutton').click()" />
+                <pause time="2000" />
+            </action>
+        </event>
+        
+        <event>
+            <condition>
+                <!-- When we reach the movie we need to click the play button -->
+                <condition name="need-to-click-play-button" />
+            </condition>
+            <action>
+                <run script="$('#button_rent').click()" />
+                <pause time="2000" />
+                <run script="$('#payexradio').click()" />
+                <pause time="300" />
+                <run script="$('#termscheckbox').click()" />
+                
+            </action>
+        </event>
+        
+        
+        
+        <event>
+            <condition>
+                <!-- When we reach the movie we need to click the play button -->
+                <condition name="need-to-click-resume-choice" />
+            </condition>
+            <action>
+                <click x="290" y="200" />
+                <pause time="2000" />
+            </action>
+        </event>
+    </state>
+</site>
